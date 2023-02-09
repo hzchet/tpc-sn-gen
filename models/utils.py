@@ -8,20 +8,6 @@ def epoch_from_name(name):
     return int(epoch)
 
 
-class LoadData(Dataset):
-    def __init__(self, dataset, transform):
-        self.dataset = dataset
-        self.transform = transform
-
-    def __len__(self):
-        return len(self.dataset)
-
-    def __getitem__(self, idx):
-        image = self.dataset[idx]
-        # image = Image.open(os.path.join(self.root, self.classes[label], filename)).convert('RGB')
-        return self.transform(image)
-
-
 def latest_epoch(model_path):
     gen_checkpoints = model_path.glob("generator_*.h5")
     disc_checkpoints = model_path.glob("discriminator_*.h5")
