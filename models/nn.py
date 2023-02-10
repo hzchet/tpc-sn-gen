@@ -42,7 +42,7 @@ class FullyConnectedBlock(torch.nn.Module):
             assert len(dropouts) == len(units)
     
         activations = [get_activation(a) for a in activations]
-        self.layers = []
+        self.layers = torch.nn.ModuleList()
     
         print(units)
         for i in range(len(units)):
@@ -136,7 +136,7 @@ class FullyConnectedResidualBlock(torch.nn.Module):
             dropouts = [None] * len(activations)
     
         activations = [get_activation(a) for a in activations]
-        self.blocks = []
+        self.blocks = torch.nn.ModuleList()
         
         for i, (act, dropout) in enumerate(zip(activations, dropouts)):
             self.blocks.append(SingleBlock(
@@ -213,7 +213,7 @@ class ConvBlock(torch.nn.Module):
         self.output_shape = output_shape
         self.use_spectral_norm = use_spectral_norm
         activations = [get_activation(a) for a in activations]
-        self.layers = []
+        self.layers = torch.nn.ModuleList()
         
         for i, (nfilt, ksize, padding, act, pool) in enumerate(zip(filters, kernel_sizes, paddings, activations, poolings)):
             if self.use_spectral_norm:
@@ -323,7 +323,7 @@ class FullModel(torch.nn.Module):
             print(custom_objects_code)
             exec(custom_objects_code, globals(), custom_objects)
     
-        self.blocks = [build_block(**descr) for descr in block_descriptions]
+        self.blocks = torch.nn.ModuleList([build_block(**descr) for descr in block_descriptions])
     
     
     def forward(self, inputs) -> Variable:
