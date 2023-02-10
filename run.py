@@ -125,8 +125,8 @@ def main():
             def features_noise(epoch):
                 current_power =  config['feature_power_noise'] / (10 ** (epoch / config['feature_noise']))
         
-        disc_lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(gamma=config['lr_schedule_rate'])
-        gen_lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(gamma=config['lr_schedule_rate'])
+        disc_lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(model.disc_opt, gamma=config['lr_schedule_rate'])
+        gen_lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(model.gen_opt, gamma=config['lr_schedule_rate'])
 
         if continue_training:
             for g in model.disc_opt.param_groups:
