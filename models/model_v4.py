@@ -45,8 +45,9 @@ def gen_loss(d_real, d_fake):
     return torch.mean(-d_fake)
 
 
-class Model_v4:
+class Model_v4(torch.nn.Module):
     def __init__(self, config, device):
+        super().__init__()
         self._f = preprocess_features
         if config['data_version'] == 'data_v4plus':
             self.full_feature_space = config.get('full_feature_space', False)
