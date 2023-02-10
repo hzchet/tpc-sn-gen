@@ -12,8 +12,7 @@ def preprocess_features(features):
     #   drift_length [35, 290]
     #   pad_coordinate [40-something, 40-something]
     bin_fractions = features[:, 2:4] % 1
-    device = bin_fractions.get_device()
-    features = (features[:, :3] - torch.tensor([[0.0, 0.0, 162.5]], device=device)) / torch.tensor([[20.0, 60.0, 127.5]], device=device)
+    features = (features[:, :3].cpu() - torch.tensor([[0.0, 0.0, 162.5]])) / torch.tensor([[20.0, 60.0, 127.5]])
     return torch.cat((features, bin_fractions), dim=-1)
 
 
@@ -27,11 +26,10 @@ def preprocess_features_v4plus(features):
     #   pT [0, 2.5]
 
     # print(features)
-    bin_fractions = torch.tensor(features[:, 2:4] % 1)
-    device = bin_fractions.get_device()
-    features_1 = (features[:, :3] - torch.tensor([[0.0, 0.0, 162.5]], device=device)) / torch.tensor([[20.0, 60.0, 127.5]], device=device)
-    features_2 = features[:, 4:5] >= 27
-    features_3 = features[:, 5:6] / 2.5
+    bin_fractions = features[:, 2:4] % 1
+    features_1 = (features[:, :3].cpu() - torch.tensor([[0.0, 0.0, 162.5]])) / torch.tensor([[20.0, 60.0, 127.5]])
+    features_2 = features[:, 4:5].cpu() >= 27
+    features_3 = features[:, 5:6].cpu() / 2.5
     return torch.cat((features_1, features_2, features_3, bin_fractions), dim=-1)
 
 
@@ -109,7 +107,7 @@ class Model_v4(torch.nn.Module):
     def make_fake(self, features):
         size = len(features)
         latent_input = torch.normal(mean=0, std=1, size=(size, self.latent_dim), device=self.device)
-        return self.generator(torch.cat((self._f(features), latent_input), dim=-1))
+        return self.generator(torch.cat((torch(self._f(features), device=self.device), latent_input), dim=-1))
 
     def gradient_penalty(self, features, real, fake):
         alpha = torch.rand(size=[len(real)] + [1] * (len(real.shape) - 1), device=self.device)
@@ -128,11 +126,11 @@ class Model_v4(torch.nn.Module):
         return torch.mean(torch.sum(grads**2, dim=-1))
 
     def calculate_losses(self, feature_batch, target_batch):
-        feature_batch = torch.tensor(feature_batch, device=self.device)
-        target_batch = torch.tensor(target_batch, device=self.device)
         fake = self.make_fake(feature_batch)
-        d_real = self.discriminator([self._f(feature_batch), target_batch])
-        d_fake = self.discriminator([self._f(feature_batch), fake])
+        target_batch = torch.tensor(target_batch, device=self.device)
+        feature_batch = torch.tensor(self._f(feature_batch), device=self.device)
+        d_real = self.discriminator([feature_batch, target_batch])
+        d_fake = self.discriminator([feature_batch, fake])
 
         d_loss = disc_loss(d_real, d_fake)
         if self.gp_lambda > 0:
