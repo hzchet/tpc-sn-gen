@@ -5,8 +5,8 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import PIL
 
-from gaussian_metrics import get_val_metric_v, _METRIC_NAMES
-from trends import make_trend_plot
+from .gaussian_metrics import get_val_metric_v, _METRIC_NAMES
+from .trends import make_trend_plot
 
 mpl.use("Agg")
 
