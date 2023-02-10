@@ -91,7 +91,7 @@ def main():
     args.config = config_path
     config = load_config(args.config)
 
-    model = Model_v4(config, device)
+    model = Model_v4(config, device).to(device)
 
     next_epoch = 0
     if args.prediction_only or continue_training:
