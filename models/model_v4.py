@@ -54,8 +54,6 @@ class Model_v4:
             if self.full_feature_space:
                 self._f = preprocess_features_v4plus
 
-        self.disc_opt = torch.optim.RMSprop(lr=config['lr_disc'])
-        self.gen_opt = torch.optim.RMSprop(config['lr_gen'])
         self.gp_lambda = config['gp_lambda']
         self.gpdata_lambda = config['gpdata_lambda']
         self.num_disc_updates = config['num_disc_updates']
@@ -79,15 +77,16 @@ class Model_v4:
             architecture_descr['discriminator'], custom_objects_code=config.get('custom_objects', None)
         ).to(self.device)
 
+        self.disc_opt = torch.optim.RMSprop(self.discriminator.parameters(), lr=config['lr_disc'])
+        self.gen_opt = torch.optim.RMSprop(self.generator.parameters(), lr=config['lr_gen'])
+
+
         self.step_counter = torch.tensor(0, dtype=torch.int)
 
         self.scaler = scalers.get_scaler(config['scaler'])
         self.pad_range = tuple(config['pad_range'])
         self.time_range = tuple(config['time_range'])
         self.data_version = config['data_version']
-
-        # self.generator.compile(optimizer=self.gen_opt, loss='mean_squared_error')
-        # self.discriminator.compile(optimizer=self.disc_opt, loss='mean_squared_error')
 
     def load_generator(self, checkpoint):
         self._load_weights(checkpoint, 'gen')
