@@ -26,6 +26,7 @@ def preprocess_features_v4plus(features):
     #   pT [0, 2.5]
 
     # print(features)
+    features = torch.tensor(features)
     bin_fractions = features[:, 2:4] % 1
     features_1 = (features[:, :3].cpu() - torch.tensor([[0.0, 0.0, 162.5]])) / torch.tensor([[20.0, 60.0, 127.5]])
     features_2 = features[:, 4:5].cpu() >= 27
