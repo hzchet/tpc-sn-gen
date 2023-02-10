@@ -27,10 +27,12 @@ def load_weights(model, model_path, epoch=None):
     if epoch is None:
         epoch = latest_epoch(model_path)
 
-    gen_checkpoint = model_path / f"generator_{epoch:05d}.h5"
-    disc_checkpoint = model_path / f"discriminator_{epoch:05d}.h5"
+    gen_checkpoint = model_path / f"generator_checkpoint_{epoch:05d}.pt"
+    gen_opt_checkpoint = model_path / f"gen_opt_{epoch:05d}.pt"
+    disc_checkpoint = model_path / f"discriminator_checkpoint_{epoch:05d}.pt"
+    disc_opt_checkpoint = model_path / f"disc_opt_{epoch:05d}.pt"
 
-    model.load_generator(gen_checkpoint)
-    model.load_discriminator(disc_checkpoint)
+    model.load_generator(gen_checkpoint, gen_opt_checkpoint)
+    model.load_discriminator(disc_checkpoint, disc_opt_checkpoint)
 
     return epoch

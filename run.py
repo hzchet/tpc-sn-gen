@@ -128,13 +128,6 @@ def main():
         disc_lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(model.disc_opt, gamma=config['lr_schedule_rate'])
         gen_lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(model.gen_opt, gamma=config['lr_schedule_rate'])
 
-        if continue_training:
-            for g in model.disc_opt.param_groups:
-                g['lr'] = disc_lr_scheduler.get_last_lr()
-
-            for g in model.gen_opt.param_groups:
-                g['lr'] = gen_lr_scheduler.get_last_lr()
-        
         save_model = SaveModelCallback(model=model, path=model_path, save_period=config['save_every'])
 
         train(

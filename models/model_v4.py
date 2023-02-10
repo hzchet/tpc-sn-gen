@@ -1,8 +1,6 @@
-import h5py
 import numpy as np
 import torch
 from torch.autograd import Variable
-
 
 from . import scalers, nn
 
@@ -89,37 +87,24 @@ class Model_v4(torch.nn.Module):
         self.time_range = tuple(config['time_range'])
         self.data_version = config['data_version']
 
-    def load_generator(self, checkpoint):
-        self._load_weights(checkpoint, 'gen')
+    def load_generator(self, model_checkpoint, opt_checkpoint):
+        self._load_weights(model_checkpoint, opt_checkpoint, 'gen')
 
-    def load_discriminator(self, checkpoint):
-        self._load_weights(checkpoint, 'disc')
+    def load_discriminator(self, model_checkpoint, opt_checkpoint):
+        self._load_weights(model_checkpoint, opt_checkpoint, 'disc')
 
-    def _load_weights(self, checkpoint, gen_or_disc):
-        if gen_or_disc == 'gen':
-            network = self.generator
-            step_fn = self.gen_step
-        elif gen_or_disc == 'disc':
+    def _load_weights(self, model_checkpoint, opt_checkpoint, gen_or_disc):
+        network = self.generator
+        optimizer = self.gen_opt
+        if gen_or_disc == 'disc':
             network = self.discriminator
-            step_fn = self.disc_step
+            optimizer = self.disc_opt
         else:
             raise ValueError(gen_or_disc)
 
-        model_file = h5py.File(checkpoint, 'r')
-        if len(network.optimizer.weights) == 0 and 'optimizer_weights' in model_file:
-            # perform single optimization step to init optimizer weights
-            features_shape = self.discriminator.inputs[0].shape.as_list()
-            targets_shape = self.discriminator.inputs[1].shape.as_list()
-            features_shape[0], targets_shape[0] = 1, 1
-            step_fn(torch.zeros(features_shape), torch.zeros(targets_shape))
-
-        print(f'Loading {gen_or_disc} weights from {str(checkpoint)}')
-        network.load_weights(str(checkpoint))
-
-        if 'optimizer_weights' in model_file:
-            print('Also recovering the optimizer state')
-            opt_weight_values = hdf5_format.load_optimizer_weights_from_hdf5_group(model_file) #????
-            network.optimizer.set_weights(opt_weight_values)
+        print(f'Loading {gen_or_disc} weights from {str(model_checkpoint)}')
+        network.load_state_dict(torch.load(model_checkpoint))
+        optimizer.load_state_dict(torch.load(opt_checkpoint))
 
     def make_fake(self, features):
         size = len(features)
