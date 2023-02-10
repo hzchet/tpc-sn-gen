@@ -97,7 +97,7 @@ class Model_v4(torch.nn.Module):
         if gen_or_disc == 'disc':
             network = self.discriminator
             optimizer = self.disc_opt
-        else:
+        elif gen_or_disc != 'gen':
             raise ValueError(gen_or_disc)
 
         print(f'Loading {gen_or_disc} weights from {str(model_checkpoint)}')
