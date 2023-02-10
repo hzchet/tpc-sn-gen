@@ -108,7 +108,7 @@ class Model_v4(torch.nn.Module):
     def make_fake(self, features):
         size = len(features)
         latent_input = torch.normal(mean=0, std=1, size=(size, self.latent_dim), device=self.device)
-        return self.generator(torch.cat((torch(self._f(features), device=self.device), latent_input), dim=-1))
+        return self.generator(torch.cat((torch.tensor(self._f(features), device=self.device), latent_input), dim=-1))
 
     def gradient_penalty(self, features, real, fake):
         alpha = torch.rand(size=[len(real)] + [1] * (len(real.shape) - 1), device=self.device)
