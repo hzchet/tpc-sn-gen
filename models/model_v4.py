@@ -156,7 +156,7 @@ class Model_v4(torch.nn.Module):
             d_loss = d_loss + self.gradient_penalty_on_data(feature_batch, target_batch) * self.gpdata_lambda
 
         g_loss = gen_loss(d_real, d_fake)
-        return {'disk_loss': d_loss, 'gen_loss': g_loss}
+        return {'disc_loss': d_loss, 'gen_loss': g_loss}
         
     def disc_step(self, feature_batch, target_batch):
         self.disc_opt.zero_grad()
