@@ -1,13 +1,16 @@
 # tpc-sn-gen
 
-## Minimalistic environment setup (CentOS 7)
+## Intermediate report
 
-The code was tested with python 3.6. The minimal set of packages is present in `requirements_minimal.txt`. Installing all these can be done with:
+Intermediate coursework report can be viewed [https://github.com/hzchet/tpc-sn-gen/blob/main/SpectralNormalization%20(1).pdf](there).
+
+## Minimalistic environment setup
+
+The code was tested with python 3.8.13. The minimal set of packages is present in `requirements.txt`. Installing all these can be done with:
 
 ```bash
-yum -y install python3-3.6.8-18.el7
 python3 -m pip install --upgrade pip
-python3 -m pip install --prefer-binary -r requirements_minimal.txt
+python3 -m pip install --prefer-binary -r requirements.txt
 ```
 
 ## Runing the training and/or evaluation of the model
