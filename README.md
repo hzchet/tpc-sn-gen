@@ -2,7 +2,7 @@
 
 ## Intermediate report
 
-Intermediate coursework report can be viewed [there](https://github.com/hzchet/tpc-sn-gen/blob/main/SpectralNormalization%20(1).pdf).
+Intermediate coursework report can be found [there](https://github.com/hzchet/tpc-sn-gen/blob/main/SpectralNormalization%20(1).pdf).
 
 ## Minimalistic environment setup
 
