@@ -55,7 +55,6 @@ class FullyConnectedBlock(torch.nn.Module):
         activations = [get_activation(a) for a in activations]
         self.layers = torch.nn.ModuleList()
     
-        print(units)
         for i in range(len(units)):
             if i == 0 and input_shape:
                 if self.use_spectral_norm:
