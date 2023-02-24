@@ -13,6 +13,17 @@ activations = {
     'relu': torch.nn.ReLU(),
     'sigmoid': torch.nn.Sigmoid(),
     'tanh': torch.nn.Tanh(),
+    'custom': lambda x,
+                    shift=0.01,
+                    val=np.log10(2),
+                    v0=np.log10(2) / 10:
+                        torch.where(
+                                x > shift,
+                                val + x - shift,
+                                v0 + torch.nn.ELU(
+                                    alpha=(v0 * shift / (val - v0))
+                                )(x) * (val - v0) / shift
+                        )
 }
 
 def get_activation(activation_name):
