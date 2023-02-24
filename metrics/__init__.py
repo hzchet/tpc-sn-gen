@@ -129,7 +129,7 @@ def make_images_for_model(
     else:
         gen_features = np.tile(X, [gen_more] + [1] * (X.ndim - 1))
     gen_scaled = np.concatenate(
-        [model.make_fake(gen_features[i : i + batch_size]).numpy() for i in range(0, len(gen_features), batch_size)],
+        [model.make_fake(gen_features[i : i + batch_size]).cpu().detach().numpy() for i in range(0, len(gen_features), batch_size)],
         axis=0,
     )
     real = model.scaler.unscale(Y)
