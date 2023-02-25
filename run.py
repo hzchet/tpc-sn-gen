@@ -12,7 +12,7 @@ from data import preprocessing
 from models.utils import latest_epoch, load_weights
 from models.training import train
 from models.callbacks import SaveModelCallback
-from models.model_v4plus import Model_v4
+from models.model_v4 import Model_v4
 from metrics import evaluate_model
 import matplotlib.pyplot as plt
 
