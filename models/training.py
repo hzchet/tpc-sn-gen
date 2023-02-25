@@ -66,7 +66,6 @@ def train(
         train_disc_losses.append(losses_train['disc_loss'])
 
         model.eval()
-
         losses_val = {}
         for i_sample in trange(0, len(data_val), batch_size):
             batch = data_val[i_sample : i_sample + batch_size]
@@ -101,4 +100,3 @@ def average(models):
         params[0].assign(np.mean(params[1:], axis=0))
 
     return result
-
