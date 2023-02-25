@@ -100,8 +100,10 @@ class Model_v4(torch.nn.Module):
         fake = torch.reshape(fake, real.shape)
         interpolates = alpha * real + (1 - alpha) * fake
 
-        inputs = [Variable(self._f(features).to(self.device), requires_grad=True), Variable(interpolates, requires_grad=True)]
-        disc_interpolates = self.discriminator(inputs)
+        interpolates = Variable(interpolates, requires_grad=True)
+        processed_features = Variable(self._f(features), requires_grad=True)
+
+        disc_interpolates = self.discriminator([processed_features, interpolates])
 
         gradients = torch.autograd.grad(outputs=disc_interpolates, inputs=interpolates,
                                         grad_outputs=torch.ones(disc_interpolates.size()).to(self.device),
