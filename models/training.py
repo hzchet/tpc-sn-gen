@@ -1,6 +1,7 @@
 import numpy as np
 from tqdm import trange
 import torch
+import wandb
 
 
 def train(
@@ -64,7 +65,11 @@ def train(
         losses_train = {k: l / len(data_train) for k, l in losses_train.items()}
         train_gen_losses.append(losses_train['gen_loss'])
         train_disc_losses.append(losses_train['disc_loss'])
-
+        wandb.log({
+            'train_gen_loss': losses_train['gen_loss'],
+            'train_disc_loss': losses_train['disc_loss'],
+        })
+        
         model.eval()
         losses_val = {}
         for i_sample in trange(0, len(data_val), batch_size):
@@ -80,6 +85,11 @@ def train(
         losses_val = {k: l / len(data_val) for k, l in losses_val.items()}
         val_gen_losses.append(losses_val['gen_loss'])
         val_disc_losses.append(losses_val['disc_loss'])
+        
+        wandb.log({
+            'val_gen_loss': losses_val['gen_loss'],
+            'val_disc_losses': losses_val['disc_loss']
+        })
 
         if callbacks is not None:
             for f in callbacks:
@@ -89,7 +99,6 @@ def train(
         print("Train losses:", losses_train)
         print("Val losses:", losses_val)
  
-
 
 def average(models):
     parameters = [model.parameters() for model in models]
