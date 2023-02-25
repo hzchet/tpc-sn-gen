@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 from torch.autograd import Variable
+import torch.autograd as autograd
 
 from . import scalers, nn
 
@@ -11,28 +12,18 @@ def preprocess_features(features):
     #   dip_angle [-60, 60]
     #   drift_length [35, 290]
     #   pad_coordinate [40-something, 40-something]
+    if not torch.is_tensor(features):
+        raise ValueError('input is not torch.tensor')
+    
     bin_fractions = features[:, 2:4] % 1
-    device = bin_fractions.get_device()
-    features = (features[:, :3] - torch.tensor([[0.0, 0.0, 162.5]], device=device)) / torch.tensor([[20.0, 60.0, 127.5]], device=device)
+
+    if features.is_cuda:
+        device = features.get_device()
+        features = (features[:, :3] - torch.tensor([[0.0, 0.0, 162.5]], device=device)) / torch.tensor([[20.0, 60.0, 127.5]], device=device)
+    else:
+        features = (features[:, :3] - torch.tensor([[0.0, 0.0, 162.5]])) / torch.tensor([[20.0, 60.0, 127.5]])
+    
     return torch.cat((features, bin_fractions), dim=-1)
-
-
-def preprocess_features_v4plus(features):
-    # features:
-    #   crossing_angle [-20, 20]
-    #   dip_angle [-60, 60]
-    #   drift_length [35, 290]
-    #   pad_coordinate [40-something, 40-something]
-    #   padrow {23, 33}
-    #   pT [0, 2.5]
-
-    # print(features)
-    bin_fractions = torch.tensor(features[:, 2:4] % 1)
-    device = bin_fractions.get_device()
-    features_1 = (features[:, :3] - torch.tensor([[0.0, 0.0, 162.5]], device=device)) / torch.tensor([[20.0, 60.0, 127.5]], device=device)
-    features_2 = features[:, 4:5] >= 27
-    features_3 = features[:, 5:6] / 2.5
-    return torch.cat((features_1, features_2, features_3, bin_fractions), dim=-1)
 
 
 def disc_loss(d_real, d_fake):
@@ -40,18 +31,13 @@ def disc_loss(d_real, d_fake):
 
 
 def gen_loss(d_real, d_fake):
-    return torch.mean(d_real-d_fake)
+    return torch.mean(d_real - d_fake)
 
 
 class Model_v4(torch.nn.Module):
     def __init__(self, config, device):
         super().__init__()
         self._f = preprocess_features
-        if config['data_version'] == 'data_v4plus':
-            self.full_feature_space = config.get('full_feature_space', False)
-            self.include_pT_for_evaluation = config.get('include_pT_for_evaluation', False)
-            if self.full_feature_space:
-                self._f = preprocess_features_v4plus
 
         self.gp_lambda = config['gp_lambda']
         self.gpdata_lambda = config['gpdata_lambda']
@@ -115,21 +101,15 @@ class Model_v4(torch.nn.Module):
         alpha = torch.rand(size=[len(real)] + [1] * (len(real.shape) - 1), device=self.device)
         fake = torch.reshape(fake, real.shape)
         interpolates = alpha * real + (1 - alpha) * fake
-
+        
         inputs = [Variable(self._f(features), requires_grad=True), Variable(interpolates, requires_grad=True)]
         disc_interpolates = self.discriminator(inputs)
-
-        gradients = torch.autograd.grad(outputs=disc_interpolates, inputs=interpolates,
-                                        grad_outputs=torch.ones(disc_interpolates.size()).to(self.device),
-                                        create_graph=True, retain_graph=True, only_inputs=True)[0]
+        
+        gradients = autograd.grad(outputs=disc_interpolates, inputs=interpolates,
+                              grad_outputs=torch.ones(disc_interpolates.size()).to(self.device),
+                              create_graph=True, retain_graph=True, only_inputs=True)[0]
 
         return ((gradients.norm(2, dim=1) - 1) ** 2).mean()
-
-    def gradient_penalty_on_data(self, features, real):
-        d_real = self.discriminator([self._f(features), real])
-
-        grads = torch.reshape(d_real.grad, (len(real), -1))
-        return torch.mean(torch.sum(grads**2, dim=-1))
 
     def calculate_losses(self, feature_batch, target_batch):
         feature_batch = torch.tensor(feature_batch, device=self.device)
@@ -141,9 +121,7 @@ class Model_v4(torch.nn.Module):
         d_loss = disc_loss(d_real, d_fake)
         if self.gp_lambda > 0:
             d_loss = d_loss + self.gradient_penalty(feature_batch, target_batch, fake) * self.gp_lambda
-        if self.gpdata_lambda > 0:
-            d_loss = d_loss + self.gradient_penalty_on_data(feature_batch, target_batch) * self.gpdata_lambda
-
+        
         g_loss = gen_loss(d_real, d_fake)
         return {'disc_loss': d_loss, 'gen_loss': g_loss}
         
