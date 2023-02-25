@@ -3,10 +3,11 @@ import shutil
 import argparse
 
 from sklearn.model_selection import train_test_split
-import tensorflow as tf
 import torch
 import numpy as np
 import yaml
+from decouple import config as env_vars
+import wandb
 
 from data import preprocessing
 from models.utils import latest_epoch, load_weights
@@ -70,7 +71,7 @@ def main():
     device = torch.device('cpu')
     if args.use_gpu:
         device = torch.device('cuda:0')
-
+    
     model_path = Path(args.logging_dir) / args.checkpoint_name
 
     config_path = str(model_path / 'config.yaml')
@@ -129,7 +130,10 @@ def main():
         gen_lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(model.gen_opt, gamma=config['lr_schedule_rate'])
 
         save_model = SaveModelCallback(model=model, path=model_path, save_period=config['save_every'])
-
+        
+        wandb.login(key=env_vars('WANDB_API_KEY'))
+        wandb.init(entity=env_vars('WANDB_ENTITY'), project=env_vars('WANDB_PROJECT'))
+        
         train(
             model,
             Y_train,
@@ -148,3 +152,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
