@@ -101,3 +101,4 @@ def average(models):
         params[0].assign(np.mean(params[1:], axis=0))
 
     return result
+

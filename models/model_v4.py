@@ -11,7 +11,9 @@ def preprocess_features(features):
     #   dip_angle [-60, 60]
     #   drift_length [35, 290]
     #   pad_coordinate [40-something, 40-something]
-    bin_fractions = features[:, 2:4] % 1
+    if not torch.is_tensor(features):
+        features = torch.tensor(features)
+    bin_fractions = features[:, 2:4].cpu() % 1
     features = (features[:, :3].cpu() - torch.tensor([[0.0, 0.0, 162.5]])) / torch.tensor([[20.0, 60.0, 127.5]])
     return torch.cat((features, bin_fractions), dim=-1)
 
@@ -37,6 +39,7 @@ class Model_v4(torch.nn.Module):
         self.gp_lambda = config['gp_lambda']
         self.gpdata_lambda = config['gpdata_lambda']
         self.num_disc_updates = config['num_disc_updates']
+        self.batch_size = config['batch_size']
 
         self.device = device
 
@@ -90,21 +93,26 @@ class Model_v4(torch.nn.Module):
     def make_fake(self, features):
         size = len(features)
         latent_input = torch.normal(mean=0, std=1, size=(size, self.latent_dim), device=self.device)
-        return self.generator(torch.cat((self._f(features), latent_input), dim=-1))
+        return self.generator(torch.cat((self._f(features).to(self.device), latent_input), dim=-1))
 
     def gradient_penalty(self, features, real, fake):
         alpha = torch.rand(size=[len(real)] + [1] * (len(real.shape) - 1), device=self.device)
         fake = torch.reshape(fake, real.shape)
         interpolates = alpha * real + (1 - alpha) * fake
 
-        inputs = [Variable(self._f(features), requires_grad=True), Variable(interpolates, requires_grad=True)]
+        inputs = [Variable(self._f(features).to(self.device), requires_grad=True), Variable(interpolates, requires_grad=True)]
         disc_interpolates = self.discriminator(inputs)
 
         gradients = torch.autograd.grad(outputs=disc_interpolates, inputs=interpolates,
                                         grad_outputs=torch.ones(disc_interpolates.size()).to(self.device),
-                                        create_graph=True, retain_graph=True, only_inputs=True)[0]
+                                        create_graph=True, retain_graph=True, allow_unused=True)[0]
 
-        return ((gradients.norm(2, dim=1) - 1) ** 2).mean()
+        gradients = gradients.view(self.batch_size, -1)
+
+        gradients_norm = torch.sqrt(torch.sum(gradients ** 2, dim=1) + 1e-12)
+        
+        return ((gradients_norm - 1) ** 2).mean()
+
 
     def gradient_penalty_on_data(self, features, real):
         d_real = self.discriminator([self._f(features), real])
@@ -166,3 +174,4 @@ class Model_v4(torch.nn.Module):
                 else:
                     self.step_counter.assign_add(1)
         return result
+

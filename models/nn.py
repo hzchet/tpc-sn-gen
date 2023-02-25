@@ -7,13 +7,13 @@ import numpy as np  # noqa: F401
 
 custom_objects = {}
 
-class CustomActivation(nn.Module):
+class CustomActivation(torch.nn.Module):
     def __init__(self, shift=0.01, val=np.log10(2), v0=np.log10(2) / 10):
         super().__init__()
         self.shift = shift
         self.val = val
         self.v0 = v0
-        self.elu = torch.nn.ELU(alpha=(v0 * shift / (val - v0))
+        self.elu = torch.nn.ELU(alpha=(v0 * shift / (val - v0)))
 
     def forward(self, x):
         return torch.where(
@@ -76,7 +76,8 @@ class FullyConnectedBlock(torch.nn.Module):
                 else:
                     self.layers.append(torch.nn.Linear(in_features=units[i-1], out_features=units[i]))
             
-            self.layers.append(activations[i])
+            if activations[i] is not None:
+                self.layers.append(activations[i])
     
             if dropouts and dropouts[i]:
                 self.layers.append(torch.nn.Dropout(p=dropouts[i]))
@@ -167,7 +168,7 @@ class FullyConnectedResidualBlock(torch.nn.Module):
     def forward(self, input_tensor) -> Variable: 
         x = input_tensor
         for i, single_block in enumerate(self.blocks):
-            if len(x.shape) == 2 and x.shape[1] == units:
+            if len(x.shape) == 2 and x.shape[1] == units[i]:
                 x = x + single_block(x)
             else:
                 assert i == 0
@@ -209,41 +210,41 @@ class ConcatBlock(torch.nn.Module):
 class ConvBlock(torch.nn.Module):
     def __init__(
         self,
-        filters,
+        out_channels,
         kernel_sizes,
         paddings,
         activations,
         poolings,
-        input_shape,
+        in_channels,
         output_shape=None,
         dropouts=None,
         name=None,
         use_spectral_norm=False
     ) -> None:
         super().__init__()
-        assert len(filters) == len(kernel_sizes) == len(paddings) == len(activations) == len(poolings)
+        assert len(out_channels) == len(kernel_sizes) == len(paddings) == len(activations) == len(poolings)
         if dropouts:
-            assert len(dropouts) == len(filters)
+            assert len(dropouts) == len(out_channels)
 
         self.output_shape = output_shape
         self.use_spectral_norm = use_spectral_norm
         activations = [get_activation(a) for a in activations]
         self.layers = torch.nn.ModuleList()
         
-        for i, (nfilt, ksize, padding, act, pool) in enumerate(zip(filters, kernel_sizes, paddings, activations, poolings)):
+        for i, (n_channels, ksize, padding, act, pool) in enumerate(zip(out_channels, kernel_sizes, paddings, activations, poolings)):
             if self.use_spectral_norm:
                 self.layers.append(spectral_norm(
                     torch.nn.Conv2d(
-                        in_channels=(input_shape if i == 0 else filters[i-1]),
-                        out_channels=nfilt,
+                        in_channels=(in_channels if i == 0 else out_channels[i-1]),
+                        out_channels=n_channels,
                         kernel_size=ksize,
                         padding=padding,
                     )
                 ))
             else:
                 self.layers.append(torch.nn.Conv2d(
-                    in_channels=(input_shape if i == 0 else filters[i-1]),
-                    out_channels=nfilt,
+                    in_channels=(in_channels if i == 0 else out_channels[i-1]),
+                    out_channels=n_channels,
                     kernel_size=ksize,
                     padding=padding,
                 ))
@@ -260,10 +261,11 @@ class ConvBlock(torch.nn.Module):
     def forward(self, input_tensor) -> Variable: 
         x = input_tensor
         for layer in self.layers:
+            # print(x.shape)
             x = layer(x)
             
         if self.output_shape:
-            x = torch.reshape(x, (-1, self.output_shape))
+            x = torch.reshape(x, (-1, *self.output_shape))
         return x
 
 
@@ -346,3 +348,4 @@ class FullModel(torch.nn.Module):
         for block in self.blocks:
             outputs = block(outputs)
         return outputs
+
