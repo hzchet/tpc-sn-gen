@@ -7,12 +7,28 @@ import numpy as np  # noqa: F401
 
 custom_objects = {}
 
+class CustomActivation(nn.Module):
+    def __init__(self, shift=0.01, val=np.log10(2), v0=np.log10(2) / 10):
+        super().__init__()
+        self.shift = shift
+        self.val = val
+        self.v0 = v0
+        self.elu = torch.nn.ELU(alpha=(v0 * shift / (val - v0))
+
+    def forward(self, x):
+        return torch.where(
+                    x > self.shift,
+                    self.val + x - self.shift,
+                    self.v0 + self.elu(x) * (self.val - self.v0) / self.shift
+                )
+
 activations = {
     'null': None,
     'elu': torch.nn.ELU(),
     'relu': torch.nn.ReLU(),
     'sigmoid': torch.nn.Sigmoid(),
     'tanh': torch.nn.Tanh(),
+    'custom': CustomActivation()
 }
 
 def get_activation(activation_name):
@@ -44,7 +60,6 @@ class FullyConnectedBlock(torch.nn.Module):
         activations = [get_activation(a) for a in activations]
         self.layers = torch.nn.ModuleList()
     
-        print(units)
         for i in range(len(units)):
             if i == 0 and input_shape:
                 if self.use_spectral_norm:

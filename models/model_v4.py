@@ -40,7 +40,7 @@ def disc_loss(d_real, d_fake):
 
 
 def gen_loss(d_real, d_fake):
-    return torch.mean(-d_fake)
+    return torch.mean(d_real-d_fake)
 
 
 class Model_v4(torch.nn.Module):
@@ -115,11 +115,15 @@ class Model_v4(torch.nn.Module):
         alpha = torch.rand(size=[len(real)] + [1] * (len(real.shape) - 1), device=self.device)
         fake = torch.reshape(fake, real.shape)
         interpolates = alpha * real + (1 - alpha) * fake
-        
+
         inputs = [Variable(self._f(features), requires_grad=True), Variable(interpolates, requires_grad=True)]
-        d_int = self.discriminator(inputs)
-        grads = torch.reshape(interpolates.grad, (len(real), -1))
-        return torch.mean(max(torch.norm(grads, dim=-1) - 1, 0) ** 2)
+        disc_interpolates = self.discriminator(inputs)
+
+        gradients = torch.autograd.grad(outputs=disc_interpolates, inputs=interpolates,
+                                        grad_outputs=torch.ones(disc_interpolates.size()).to(self.device),
+                                        create_graph=True, retain_graph=True, only_inputs=True)[0]
+
+        return ((gradients.norm(2, dim=1) - 1) ** 2).mean()
 
     def gradient_penalty_on_data(self, features, real):
         d_real = self.discriminator([self._f(features), real])

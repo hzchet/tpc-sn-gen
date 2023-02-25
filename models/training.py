@@ -72,7 +72,7 @@ def train(
             batch = data_val[i_sample : i_sample + batch_size]
             with torch.no_grad():
                 if features_train is None:
-                    losses_val_batch = {k: l.cpu().numpy() for k, l in model.calculate_losses(batch).items()}
+                    losses_val_batch = {k: l.cpu().detach().numpy() for k, l in model.calculate_losses(batch).items()}
                 else:
                     feature_batch = features_val[i_sample : i_sample + batch_size]
                     losses_val_batch = {k: l.cpu().detach().numpy() for k, l in model.calculate_losses(feature_batch, batch).items()}
