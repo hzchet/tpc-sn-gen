@@ -110,10 +110,7 @@ class Model_v4(torch.nn.Module):
     
         gradients = gradients.view(self.batch_size, -1)
 
-        gradients_norm = torch.sqrt(torch.sum(gradients ** 2, dim=1) + 1e-12)
-        
-        return ((gradients_norm - 1) ** 2).mean()
-
+        return torch.mean(torch.maximum(gradients.norm(2, dim=1)-1, 0) ** 2)
 
     def gradient_penalty_on_data(self, features, real):
         d_real = self.discriminator([self._f(features), real])
