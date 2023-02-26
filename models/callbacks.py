@@ -1,6 +1,8 @@
 import torch
 import torchvision.utils as vutils
 
+from metrics import evaluate_model
+
 
 class SaveModelCallback:
     def __init__(self, model, path, save_period):
@@ -29,7 +31,6 @@ class EvaluateModelCallback:
             print(f'Evaluating model on step {step}')
             self.model.eval()
             prediction_path = self.path / f"prediction_{step:05d}"
-            prediction_path.mkdir()
             with torch.no_grad():
                 chi2 = evaluate_model(
                     self.model,

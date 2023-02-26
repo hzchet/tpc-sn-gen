@@ -133,7 +133,7 @@ def main():
         evaluate_model = EvaluateModelCallback(model=model, path=model_path, save_period=config['save_every'], sample=(X_test, Y_test))
         
         wandb.login(key=env_vars('WANDB_API_KEY'))
-        wandb.init(entity=env_vars('WANDB_ENTITY'), project=env_vars('WANDB_PROJECT'))
+        wandb.init(entity=env_vars('WANDB_ENTITY'), project=env_vars('WANDB_PROJECT'), name=args.checkpoint_name)
         
         train(
             model,
