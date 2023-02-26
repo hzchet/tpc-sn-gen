@@ -147,7 +147,7 @@ def main():
             features_noise=features_noise,
             first_epoch=next_epoch,
             callbacks=[save_model],
-            model_path
+            model_path=model_path
         )
 
 
