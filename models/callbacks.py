@@ -1,5 +1,6 @@
 import torch
 import torchvision.utils as vutils
+import wandb
 
 from metrics import evaluate_model
 
@@ -40,5 +41,4 @@ class EvaluateModelCallback:
                 )
             wandb.log({
                 f'eval_epoch': step,
-                f'chi2': chi2,
-            })
+                f'chi2': chi2, })
