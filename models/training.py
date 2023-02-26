@@ -68,6 +68,7 @@ def train(
         wandb.log({
             'train_gen_loss': losses_train['gen_loss'],
             'train_disc_loss': losses_train['disc_loss'],
+            'epoch': i_epoch, 
         })
         
         model.eval()
@@ -88,7 +89,8 @@ def train(
         
         wandb.log({
             'val_gen_loss': losses_val['gen_loss'],
-            'val_disc_losses': losses_val['disc_loss']
+            'val_disc_losses': losses_val['disc_loss'],
+            'epoch': i_epoch,
         })
 
         if callbacks is not None:
