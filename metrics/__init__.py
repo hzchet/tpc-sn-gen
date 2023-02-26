@@ -230,6 +230,8 @@ def evaluate_model(model, path, sample, gen_sample_name=None):
     with open(str(path / 'stats'), 'w') as f:
         f.write(f"{chi2:.2f}\n")
 
+    return chi2
+
 
 def plot_individual_images(real, gen, n=10, pdffile=None, label_real='real', label_gen='generated'):
     assert real.ndim == 3 == gen.ndim

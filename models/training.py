@@ -16,7 +16,8 @@ def train(
     features_val=None,
     features_noise=None,
     first_epoch=0,
-    callbacks=None
+    callbacks=None,
+    model_path=None
 ):
     if not ((features_train is None) or (features_val is None)):
         assert features_train is not None, 'train: features should be provided for both train and val'
@@ -100,7 +101,22 @@ def train(
         print("", flush=True)
         print("Train losses:", losses_train)
         print("Val losses:", losses_val)
- 
+        
+        if i_epoch % 50 == 0:
+            prediction_path = model_path / f"prediction_{i_epoch:05d}"
+            prediction_path.mkdir()
+            wandb.log({'eval_epoch': i_epoch})
+            for part in ['train', 'test']:
+                chi2 = evaluate_model(
+                    model,
+                    path=prediction_path / part,
+                    sample=((features_train, data_train) if part == 'train' else (features_val, data_val)),
+                    gen_sample_name=(None if part == 'train' else 'generated.dat'),
+                )
+                wandb.log({
+                    f'chi2_{part}': chi2,
+                }) 
+
 
 def average(models):
     parameters = [model.parameters() for model in models]
