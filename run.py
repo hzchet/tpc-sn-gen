@@ -12,7 +12,7 @@ import wandb
 from data import preprocessing
 from models.utils import latest_epoch, load_weights
 from models.training import train
-from models.callbacks import SaveModelCallback
+from models.callbacks import SaveModelCallback, EvaluateModelCallback
 from models.model_v4 import Model_v4
 from metrics import evaluate_model
 import matplotlib.pyplot as plt
@@ -130,6 +130,7 @@ def main():
         gen_lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(model.gen_opt, gamma=config['lr_schedule_rate'])
 
         save_model = SaveModelCallback(model=model, path=model_path, save_period=config['save_every'])
+        evaluate_model = EvaluateModelCallback(model=model, path=model_path, save_period=config['save_every'], sample=(X_test, Y_test))
         
         wandb.login(key=env_vars('WANDB_API_KEY'))
         wandb.init(entity=env_vars('WANDB_ENTITY'), project=env_vars('WANDB_PROJECT'))
@@ -146,8 +147,7 @@ def main():
             features_val=X_test,
             features_noise=features_noise,
             first_epoch=next_epoch,
-            callbacks=[save_model],
-            model_path=model_path
+            callbacks=[save_model, evaluate_model],
         )
 
 
