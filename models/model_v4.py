@@ -108,9 +108,7 @@ class Model_v4(torch.nn.Module):
                                         grad_outputs=torch.ones(disc_interpolates.size()).to(self.device),
                                         create_graph=True, retain_graph=True)[0]
     
-        gradients = gradients.view(self.batch_size, -1)
-
-        return torch.mean(torch.maximum(gradients.norm(2, dim=1)-1, 0) ** 2)
+        return torch.mean(torch.maximum(gradients.norm(2, dim=1) - 1, 0) ** 2)
 
     def gradient_penalty_on_data(self, features, real):
         d_real = self.discriminator([self._f(features), real])
@@ -128,9 +126,13 @@ class Model_v4(torch.nn.Module):
 
         d_loss = disc_loss(d_real, d_fake)
         if self.training and self.gp_lambda > 0:
-            d_loss = d_loss + self.gradient_penalty(feature_batch, target_batch, fake) * self.gp_lambda
+            penalty = self.gradient_penalty(feature_batch, target_batch, fake)
+            d_loss = d_loss + penalty * self.gp_lambda
+            penalty.backward()
         if self.training and self.gpdata_lambda > 0:
-            d_loss = d_loss + self.gradient_penalty_on_data(feature_batch, target_batch) * self.gpdata_lambda
+            penalty = self.gradient_penalty_on_data(feature_batch, target_batch)
+            d_loss = d_loss + penalty * self.gpdata_lambda
+            penalty.backward()
 
         g_loss = gen_loss(d_real, d_fake)
         return {'disc_loss': d_loss, 'gen_loss': g_loss}
