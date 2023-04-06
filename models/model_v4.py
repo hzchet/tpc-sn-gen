@@ -1,21 +1,9 @@
 import numpy as np
 import torch
 from torch.autograd import Variable
+from data import preprocessing
 
 from . import scalers, nn
-
-
-def preprocess_features(features):
-    # features:
-    #   crossing_angle [-20, 20]
-    #   dip_angle [-60, 60]
-    #   drift_length [35, 290]
-    #   pad_coordinate [40-something, 40-something]
-    if not torch.is_tensor(features):
-        features = torch.tensor(features)
-    bin_fractions = features[:, 2:4].cpu() % 1
-    features = (features[:, :3].cpu() - torch.tensor([[0.0, 0.0, 162.5]])) / torch.tensor([[20.0, 60.0, 127.5]])
-    return torch.cat((features, bin_fractions), dim=-1)
 
 
 def disc_loss(d_real, d_fake):
@@ -29,12 +17,9 @@ def gen_loss(d_real, d_fake):
 class Model_v4(torch.nn.Module):
     def __init__(self, config, device):
         super().__init__()
-        self._f = preprocess_features
         if config['data_version'] == 'data_v4plus':
             self.full_feature_space = config.get('full_feature_space', False)
             self.include_pT_for_evaluation = config.get('include_pT_for_evaluation', False)
-            if self.full_feature_space:
-                self._f = preprocess_features_v4plus
 
         self.gp_lambda = config['gp_lambda']
         self.gpdata_lambda = config['gpdata_lambda']
@@ -88,38 +73,83 @@ class Model_v4(torch.nn.Module):
         print(f'Loading {gen_or_disc} weights from {str(model_checkpoint)}')
         network.load_state_dict(torch.load(model_checkpoint))
         optimizer.load_state_dict(torch.load(opt_checkpoint))
-
+    
+    def make_fake_np(self, features):
+        size = len(features)
+        latent_input = torch.normal(mean=0, std=1, size=(size, self.latent_dim), device=self.device)
+        preprocessed_features = preprocessing.preprocess_features(features)
+        fake = self.generator(torch.cat([torch.tensor(preprocessed_features, device=self.device, dtype=torch.float32), latent_input], dim=-1))
+        return fake.cpu().detach().numpy()
+    
     def make_fake(self, features):
         size = len(features)
         latent_input = torch.normal(mean=0, std=1, size=(size, self.latent_dim), device=self.device)
-        fake = self.generator(torch.cat((self._f(features).to(self.device), latent_input), dim=-1))
+        fake = self.generator(torch.cat((features, latent_input), dim=-1))
         return fake
 
     def gradient_penalty(self, features, real, fake):
-        alpha = torch.rand(size=[len(real)] + [1] * (len(real.shape) - 1), device=self.device)
+        alpha = torch.rand(size=[len(real)] + [1] * (len(real.shape) - 1), requires_grad=True, device=self.device)
         fake = torch.reshape(fake, real.shape)
         interpolates = alpha * real + (1 - alpha) * fake
 
         interpolates = Variable(interpolates, requires_grad=True)
-        processed_features = Variable(self._f(features).to(self.device), requires_grad=True)
-
-        disc_interpolates = self.discriminator([processed_features, interpolates])
+        disc_interpolates = self.discriminator([features, interpolates])
         gradients = torch.autograd.grad(outputs=disc_interpolates, inputs=interpolates,
                                         grad_outputs=torch.ones(disc_interpolates.size()).to(self.device),
                                         create_graph=True, retain_graph=True)[0]
     
-        return torch.mean(torch.maximum(gradients.norm(2, dim=1) - 1, torch.tensor([0]).to(self.device)) ** 2)
+        return torch.mean(torch.maximum(gradients.norm(2, dim=1) - 1, torch.tensor([0], dtype=torch.float32, requires_grad=True).to(self.device)) ** 2)
 
-    def gradient_penalty_on_data(self, features, real):
-        d_real = self.discriminator([self._f(features), real])
-
-        grads = torch.reshape(d_real.grad, (len(real), -1))
-        return torch.mean(torch.sum(grads**2, dim=-1))
-
-    def calculate_losses(self, feature_batch, target_batch):
+    def disc_step(self, feature_batch, target_batch):
+        self.disc_opt.zero_grad()
+        
+        feature_batch = torch.tensor(feature_batch, requires_grad=True, device=self.device, dtype=torch.float32)
+        target_batch = torch.tensor(target_batch, requires_grad=True, device=self.device, dtype=torch.float32)
+        
+        fake = self.make_fake(feature_batch)        
+        d_real = self.discriminator([feature_batch, target_batch])
+        d_fake = self.discriminator([feature_batch, fake])
+        
+        d_loss = disc_loss(d_real, d_fake)
+        if self.gp_lambda > 0:
+            d_loss += self.gp_lambda * self.gradient_penalty(feature_batch, target_batch, fake)
+        
+        d_loss.backward()
+        self.disc_opt.step()
+        
+        with torch.no_grad():
+            g_loss = gen_loss(d_real, d_fake)
+        
+        losses = {'gen_loss': g_loss, 'disc_loss': d_loss}
+        
+        return losses
+    
+    def gen_step(self, feature_batch, target_batch):
+        self.gen_opt.zero_grad()
+        
+        feature_batch = torch.tensor(feature_batch, requires_grad=True, device=self.device, dtype=torch.float32)
+        target_batch = torch.tensor(target_batch, requires_grad=True, device=self.device, dtype=torch.float32)
+        
         fake = self.make_fake(feature_batch)
-        target_batch = torch.tensor(target_batch, device=self.device)
-        feature_batch = self._f(feature_batch).to(self.device)
+        d_real = self.discriminator([feature_batch, target_batch])
+        d_fake = self.discriminator([feature_batch, fake])
+        
+        g_loss = gen_loss(d_real, d_fake)
+        g_loss.backward()
+        self.gen_opt.step()
+        
+        d_loss = disc_loss(d_real, d_fake)
+        if self.gp_lambda > 0:
+            d_loss += self.gp_lambda * self.gradient_penalty(feature_batch, target_batch, fake)
+            
+        losses = {'gen_loss': g_loss, 'disc_loss': d_loss}
+        
+        return losses
+    
+    def calculate_losses(self, feature_batch, target_batch):
+        feature_batch = torch.tensor(feature_batch, device=self.device, dtype=torch.float32)
+        target_batch = torch.tensor(target_batch, device=self.device, dtype=torch.float32)
+        fake = self.make_fake(feature_batch)
     
         d_real = self.discriminator([feature_batch, target_batch])
         d_fake = self.discriminator([feature_batch, fake])
@@ -128,32 +158,9 @@ class Model_v4(torch.nn.Module):
         if self.training and self.gp_lambda > 0:
             penalty = self.gradient_penalty(feature_batch, target_batch, fake)
             d_loss = d_loss + penalty * self.gp_lambda
-        if self.training and self.gpdata_lambda > 0:
-            penalty = self.gradient_penalty_on_data(feature_batch, target_batch)
-            d_loss = d_loss + penalty * self.gpdata_lambda
 
         g_loss = gen_loss(d_real, d_fake)
-        return {'disc_loss': d_loss, 'gen_loss': g_loss}
-        
-    def disc_step(self, feature_batch, target_batch):
-        self.disc_opt.zero_grad()
-        
-        losses = self.calculate_losses(feature_batch, target_batch)
-        
-        losses['disc_loss'].backward()
-        self.disc_opt.step()
-
-        return losses
-
-    def gen_step(self, feature_batch, target_batch):
-        self.gen_opt.zero_grad()
-        
-        losses = self.calculate_losses(feature_batch, target_batch)
-        
-        losses['gen_loss'].backward()        
-        self.gen_opt.step()
-        
-        return losses
+        return {'gen_loss': g_loss, 'disc_loss': d_loss}
     
     def training_step(self, feature_batch, target_batch):
         if self.stochastic_stepping:

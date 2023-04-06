@@ -78,7 +78,7 @@ class FullyConnectedBlock(torch.nn.Module):
                     )    
                 else:
                     self.layers.append(torch.nn.Linear(in_features=units[i-1], out_features=units[i]))
-            
+            torch.nn.init.xavier_uniform_(self.layers[-1].weight)
             if activations[i] is not None:
                 self.layers.append(activations[i])
     
@@ -252,6 +252,7 @@ class ConvBlock(torch.nn.Module):
                     padding=padding,
                 ))
             
+            torch.nn.init.xavier_uniform_(self.layers[-1].weight)
             self.layers.append(act)
     
             if dropouts and dropouts[i]:

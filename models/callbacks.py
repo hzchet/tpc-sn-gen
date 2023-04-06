@@ -29,7 +29,7 @@ class EvaluateModelCallback:
 
     def __call__(self, step):
         if step % self.save_period == 0:
-            print(f'Evaluating model on step {step}')
+            print(f'Evaluating model on step {step}...')
             self.model.eval()
             prediction_path = self.path / f"prediction_{step:05d}"
             with torch.no_grad():

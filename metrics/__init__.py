@@ -118,6 +118,7 @@ def make_images_for_model(
     if model.data_version == 'data_v4plus':
         assert X.shape[1] == 6
     else:
+        # print('\n\n X.shape =', X.shape, '\n')
         assert X.shape[1] == 4
     make_pdfs = pdf_outputs is not None
     if make_pdfs:
@@ -129,7 +130,7 @@ def make_images_for_model(
     else:
         gen_features = np.tile(X, [gen_more] + [1] * (X.ndim - 1))
     gen_scaled = np.concatenate(
-        [model.make_fake(gen_features[i : i + batch_size]).cpu().detach().numpy() for i in range(0, len(gen_features), batch_size)],
+        [model.make_fake_np(gen_features[i : i + batch_size]) for i in range(0, len(gen_features), batch_size)],
         axis=0,
     )
     real = model.scaler.unscale(Y)

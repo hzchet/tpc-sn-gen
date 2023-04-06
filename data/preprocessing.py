@@ -10,6 +10,18 @@ _V4PLUS_VAR_NAMES = ["crossing_angle", "dip_angle", "drift_length", "pad_coordin
 _V4PLUS_VAR_TYPES = [float, float, float, float, int, float]
 
 
+def preprocess_features(features):
+    """features:
+        crossing_angle [-20, 20]
+        dip_angle [-60, 60]
+        drift_length [35, 290]
+        pad_coordinate [40-something, 40-something]
+    """
+    bin_fractions = features[:, 2:4] % 1
+    features = (features[:, :3] - np.array([[0.0, 0.0, 162.5]])) / np.array([[20.0, 60.0, 127.5]])
+    return np.concatenate([features, bin_fractions], axis=-1)
+
+
 class Reader:
     def __init__(self, variables, types):
         assert len(variables) == len(types), 'Reader.__init__: variables and types have different length'

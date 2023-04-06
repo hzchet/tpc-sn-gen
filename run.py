@@ -103,9 +103,11 @@ def main():
     features = features.astype('float32')
 
     data_scaled = model.scaler.scale(data).astype('float32')
-
-    Y_train, Y_test, X_train, X_test = train_test_split(data_scaled, features, test_size=0.25, random_state=42)
-
+    
+    Y_train, Y_test, X_train_raw, X_test_raw = train_test_split(data_scaled, features, test_size=0.25, random_state=42)
+    X_train = preprocessing.preprocess_features(X_train_raw)
+    X_test = preprocessing.preprocess_features(X_test_raw)
+    
     if args.prediction_only:
         epoch = latest_epoch(model_path)
         prediction_path = model_path / f"prediction_{epoch:05d}"
@@ -116,7 +118,7 @@ def main():
             evaluate_model(
                 model,
                 path=prediction_path / part,
-                sample=((X_train, Y_train) if part == 'train' else (X_test, Y_test)),
+                sample=((X_train_raw, Y_train) if part == 'train' else (X_test_raw, Y_test)),
                 gen_sample_name=(None if part == 'train' else 'generated.dat'),
             )
     else:
@@ -130,7 +132,7 @@ def main():
         gen_lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(model.gen_opt, gamma=config['lr_schedule_rate'])
 
         save_model = SaveModelCallback(model=model, path=model_path, save_period=config['save_every'])
-        evaluate_model = EvaluateModelCallback(model=model, path=model_path, save_period=config['save_every'], sample=(X_test, Y_test))
+        evaluate_model = EvaluateModelCallback(model=model, path=model_path, save_period=config['save_every'], sample=(X_test_raw, Y_test))
         
         wandb.login(key=env_vars('WANDB_API_KEY'))
         wandb.init(entity=env_vars('WANDB_ENTITY'), project=env_vars('WANDB_PROJECT'), name=args.checkpoint_name)
@@ -153,4 +155,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
