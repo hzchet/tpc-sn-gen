@@ -51,7 +51,8 @@ class FullyConnectedBlock(torch.nn.Module):
         output_shape=None, 
         dropouts=None, 
         name=None,
-        use_spectral_norm=False
+        use_spectral_norm=False,
+        enforce_norm=1.0
     ) -> None:
         super().__init__()
         self.output_shape = output_shape
@@ -104,7 +105,8 @@ class SingleBlock(torch.nn.Module):
         activation=None, 
         batchnorm=None, 
         dropout=None,
-        use_spectral_norm=False
+        use_spectral_norm=False,
+        enforce_norm=1.0
     ) -> None:
         super().__init__()
         self.activation = activation
@@ -130,55 +132,6 @@ class SingleBlock(torch.nn.Module):
         x = self.activation(x)
         if self.dropout:
             x = self.dropout_layer(x)
-        return x
-
-
-class FullyConnectedResidualBlock(torch.nn.Module):
-    def __init__(
-        self,
-        units,
-        activations,
-        input_shape,
-        batchnorm=True,
-        output_shape=None,
-        dropouts=None,
-        name=None,
-        use_spectral_norm=False
-    ) -> None:
-        super().__init__()
-        self.output_shape = output_shape
-        self.use_spectral_norm = use_spectral_norm
-        assert isinstance(units, int)
-        if dropouts:
-            assert len(dropouts) == len(activations)
-        else:
-            dropouts = [None] * len(activations)
-    
-        activations = [get_activation(a) for a in activations]
-        self.blocks = torch.nn.ModuleList()
-        
-        for i, (act, dropout) in enumerate(zip(activations, dropouts)):
-            self.blocks.append(SingleBlock(
-                input_shape=(units if i > 0 else input_shape), 
-                output_shape=units, 
-                activations=act, 
-                batchnorm=batchnorm, 
-                dropout=dropout,
-                use_spectral_norm=use_spectral_norm
-            ))
-
-
-    def forward(self, input_tensor) -> Variable: 
-        x = input_tensor
-        for i, single_block in enumerate(self.blocks):
-            if len(x.shape) == 2 and x.shape[1] == units[i]:
-                x = x + single_block(x)
-            else:
-                assert i == 0
-                x = single_block(x)
-    
-        if self.output_shape:
-            x = torch.reshape(x, self.output_shape)
         return x
 
 
@@ -222,7 +175,8 @@ class ConvBlock(torch.nn.Module):
         output_shape=None,
         dropouts=None,
         name=None,
-        use_spectral_norm=False
+        use_spectral_norm=False,
+        enforce_norm=1.0
     ) -> None:
         super().__init__()
         assert len(out_channels) == len(kernel_sizes) == len(paddings) == len(activations) == len(poolings)
@@ -323,8 +277,6 @@ def build_block(block_type, arguments):
         block = VectorImgConnectBlock(**arguments)
     elif block_type == 'concat':
         block = ConcatBlock(**arguments)
-    elif block_type == 'fully_connected_residual':
-        block = FullyConnectedResidualBlock(**arguments)
     else:
         raise (NotImplementedError(block_type))
 

@@ -7,7 +7,7 @@ num_disc_updates: 8
 gp_lambda: 10.
 gpdata_lambda: 0.
 cramer: False
-stochastic_stepping: False
+stochastic_stepping: True
 
 save_every: 200
 num_epochs: 10001
@@ -52,7 +52,8 @@ architecture:
                 output_shape: [64,]
                 dropouts: [0.02, 0.02, 0.02, 0.02, 0.02, 0.02]
                 name: discriminator_conv_block
-                use_spectral_norm: False
+                use_spectral_norm: True
+                enforce_norm: 3.0
         - block_type: 'fully_connected'
           arguments:
             units: [128, 1]
@@ -60,5 +61,6 @@ architecture:
             input_shape: [69,]
             output_shape: NULL
             name: 'discriminator_head'
-            use_spectral_norm: False
+            use_spectral_norm: True
+            enforce_norm: 3.0
 

@@ -97,7 +97,8 @@ class Model_v4(torch.nn.Module):
         gradients = torch.autograd.grad(outputs=disc_interpolates, inputs=interpolates,
                                         grad_outputs=torch.ones(disc_interpolates.size()).to(self.device),
                                         create_graph=True, retain_graph=True)[0]
-    
+
+        gradients = gradients.view(gradients.size(0), -1)
         return torch.mean(torch.maximum(gradients.norm(2, dim=1) - 1, torch.tensor([0], dtype=torch.float32, requires_grad=True).to(self.device)) ** 2)
 
     def disc_step(self, feature_batch, target_batch):

@@ -2,20 +2,16 @@ from pathlib import Path
 import shutil
 import argparse
 
-from sklearn.model_selection import train_test_split
 import torch
-import numpy as np
 import yaml
 from decouple import config as env_vars
 import wandb
 
-from data import preprocessing
-from models.utils import latest_epoch, load_weights
+from data import loader
+from models.utils import load_weights
 from models.training import train
 from models.callbacks import SaveModelCallback, EvaluateModelCallback
 from models.model_v4 import Model_v4
-from metrics import evaluate_model
-import matplotlib.pyplot as plt
 
 
 def make_parser():
@@ -23,7 +19,6 @@ def make_parser():
     parser.add_argument('--config', type=str, required=False)
     parser.add_argument('--checkpoint_name', type=str, required=True)
     parser.add_argument('--use_gpu', action='store_true', default=False)
-    parser.add_argument('--prediction_only', action='store_true', default=False)
     parser.add_argument('--logging_dir', type=str, default='logs')
 
     return parser
@@ -98,59 +93,34 @@ def main():
     if args.prediction_only or continue_training:
         next_epoch = load_weights(model, model_path) + 1
 
-    preprocessing._VERSION = model.data_version
-    data, features = preprocessing.read_csv_2d(pad_range=model.pad_range, time_range=model.time_range, strict=False)
-    features = features.astype('float32')
-
-    data_scaled = model.scaler.scale(data).astype('float32')
+    train_loader, test_loader = loader.get_loaders(
+        scaler=model.scaler,
+        batch_size=config['batch_size'],
+        data_version=config['data_version'],
+        pad_range=model.pad_range,
+        time_range=model.time_range,
+        strict=False
+    )
     
-    Y_train, Y_test, X_train_raw, X_test_raw = train_test_split(data_scaled, features, test_size=0.25, random_state=42)
-    X_train = preprocessing.preprocess_features(X_train_raw)
-    X_test = preprocessing.preprocess_features(X_test_raw)
+    disc_lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(model.disc_opt, gamma=config['lr_schedule_rate'])
+    gen_lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(model.gen_opt, gamma=config['lr_schedule_rate'])
+
+    save_model = SaveModelCallback(model=model, path=model_path, save_period=config['save_every'])
+    evaluate_model = EvaluateModelCallback(model=model, path=model_path, save_period=config['save_every'], sample=(X_test_raw, Y_test))
     
-    if args.prediction_only:
-        epoch = latest_epoch(model_path)
-        prediction_path = model_path / f"prediction_{epoch:05d}"
-        assert not prediction_path.exists(), "Prediction path already exists"
-        prediction_path.mkdir()
-
-        for part in ['train', 'test']:
-            evaluate_model(
-                model,
-                path=prediction_path / part,
-                sample=((X_train_raw, Y_train) if part == 'train' else (X_test_raw, Y_test)),
-                gen_sample_name=(None if part == 'train' else 'generated.dat'),
-            )
-    else:
-        features_noise = None
-        if config['feature_noise_power'] is not None:
-
-            def features_noise(epoch):
-                current_power =  config['feature_power_noise'] / (10 ** (epoch / config['feature_noise']))
-        
-        disc_lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(model.disc_opt, gamma=config['lr_schedule_rate'])
-        gen_lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(model.gen_opt, gamma=config['lr_schedule_rate'])
-
-        save_model = SaveModelCallback(model=model, path=model_path, save_period=config['save_every'])
-        evaluate_model = EvaluateModelCallback(model=model, path=model_path, save_period=config['save_every'], sample=(X_test_raw, Y_test))
-        
-        wandb.login(key=env_vars('WANDB_API_KEY'))
-        wandb.init(entity=env_vars('WANDB_ENTITY'), project=env_vars('WANDB_PROJECT'), name=args.checkpoint_name)
-        
-        train(
-            model,
-            Y_train,
-            Y_test,
-            config['num_epochs'],
-            config['batch_size'],
-            gen_lr_scheduler,
-            disc_lr_scheduler,
-            features_train=X_train,
-            features_val=X_test,
-            features_noise=features_noise,
-            first_epoch=next_epoch,
-            callbacks=[save_model, evaluate_model],
-        )
+    wandb.login(key=env_vars('WANDB_API_KEY'))
+    wandb.init(entity=env_vars('WANDB_ENTITY'), project=env_vars('WANDB_PROJECT'), name=args.checkpoint_name)
+    
+    train(
+        model,
+        train_loader,
+        test_loader,
+        config['num_epochs'],        
+        gen_lr_scheduler,
+        disc_lr_scheduler,
+        first_epoch=next_epoch,
+        callbacks=[save_model, evaluate_model],
+    )
 
 
 if __name__ == '__main__':
