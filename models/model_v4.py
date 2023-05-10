@@ -48,7 +48,7 @@ class Model_v4(torch.nn.Module):
         self.disc_opt = torch.optim.RMSprop(self.discriminator.parameters(), lr=config['lr_disc'])
         self.gen_opt = torch.optim.RMSprop(self.generator.parameters(), lr=config['lr_gen'])
 
-        self.step_counter = torch.tensor(0, dtype=torch.int)
+        self.step_counter = 0
 
         self.scaler = scalers.get_scaler(config['scaler'])
         self.pad_range = tuple(config['pad_range'])
@@ -83,7 +83,7 @@ class Model_v4(torch.nn.Module):
     
     def make_fake(self, features):
         size = len(features)
-        latent_input = torch.normal(mean=0, std=1, size=(size, self.latent_dim), device=self.device)
+        latent_input = torch.normal(mean=0, std=1, size=(size, self.latent_dim), device=self.device, dtype=torch.float32)
         fake = self.generator(torch.cat((features, latent_input), dim=-1))
         return fake
 
@@ -104,8 +104,8 @@ class Model_v4(torch.nn.Module):
     def disc_step(self, feature_batch, target_batch):
         self.disc_opt.zero_grad()
         
-        feature_batch = torch.tensor(feature_batch, requires_grad=True, device=self.device, dtype=torch.float32)
-        target_batch = torch.tensor(target_batch, requires_grad=True, device=self.device, dtype=torch.float32)
+        feature_batch = feature_batch.to(self.device).type(torch.float32)
+        target_batch = target_batch.to(self.device).type(torch.float32)
         
         fake = self.make_fake(feature_batch)        
         d_real = self.discriminator([feature_batch, target_batch])
@@ -128,8 +128,8 @@ class Model_v4(torch.nn.Module):
     def gen_step(self, feature_batch, target_batch):
         self.gen_opt.zero_grad()
         
-        feature_batch = torch.tensor(feature_batch, requires_grad=True, device=self.device, dtype=torch.float32)
-        target_batch = torch.tensor(target_batch, requires_grad=True, device=self.device, dtype=torch.float32)
+        feature_batch = feature_batch.to(self.device).type(torch.float32)
+        target_batch = target_batch.to(self.device).type(torch.float32)
         
         fake = self.make_fake(feature_batch)
         d_real = self.discriminator([feature_batch, target_batch])
@@ -172,12 +172,12 @@ class Model_v4(torch.nn.Module):
         else:
             if self.step_counter == self.num_disc_updates:
                 result = self.gen_step(feature_batch, target_batch)
-                self.step_counter.assign(0)
+                self.step_counter = 0
             else:
                 result = self.disc_step(feature_batch, target_batch)
                 if self.dynamic_stepping:
                     if result['disc_loss'] < self.dynamic_stepping_threshold:
                         self.step_counter.assign(self.num_disc_updates)
                 else:
-                    self.step_counter.assign_add(1)
+                    self.step_counter += 1
         return result

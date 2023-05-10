@@ -1,5 +1,5 @@
 import numpy as np
-from tqdm import trange
+from tqdm import tqdm, trange
 import torch
 import wandb
 
@@ -10,6 +10,7 @@ def train(
     data_val,
     features_val,
     num_epochs,
+    batch_size,
     gen_lr_scheduler=None,
     disc_lr_scheduler=None,
     first_epoch=0,
@@ -28,8 +29,8 @@ def train(
         
         losses_train = {}
 
-        for data, features in trange(train_loader):
-            losses_train_batch = model.training_step(data, features)
+        for data, features in tqdm(train_loader):
+            losses_train_batch = model.training_step(features, data)
             for k, l in losses_train_batch.items():
                 losses_train[k] = losses_train.get(k, 0) + l.item() * len(data)
 
@@ -53,11 +54,8 @@ def train(
         for i_sample in trange(0, len(data_val), batch_size):
             batch = data_val[i_sample : i_sample + batch_size]
             with torch.no_grad():
-                if features_train is None:
-                    losses_val_batch = {k: l.cpu().detach().numpy() for k, l in model.calculate_losses(batch).items()}
-                else:
-                    feature_batch = features_val[i_sample : i_sample + batch_size]
-                    losses_val_batch = {k: l.cpu().detach().numpy() for k, l in model.calculate_losses(feature_batch, batch).items()}
+                feature_batch = features_val[i_sample : i_sample + batch_size]
+                losses_val_batch = {k: l.cpu().detach().numpy() for k, l in model.calculate_losses(feature_batch, batch).items()}
             for k, l in losses_val_batch.items():
                 losses_val[k] = losses_val.get(k, 0) + l * len(batch)
         

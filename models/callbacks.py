@@ -32,13 +32,11 @@ class EvaluateModelCallback:
             self.model.eval()
             prediction_path = self.path / f"prediction_{step:05d}"
             with torch.no_grad():
-                images, images1, img_amplitude, chi2, chi2_feature = make_images_for_model(self.model, sample=self.sample, calc_chi2=True)
+                images, images1, img_amplitude, chi2 = make_images_for_model(self.model, sample=self.sample, calc_chi2=True)
                 wandb.log({'chi2': chi2,
-                           'chi2_Sigma1^2': chi2_feature,
                            'eval_epoch': step,
-                           })
+                })
                 print(chi2)
-                print(chi2_feature)
                 for k, img in images.items():
                     img_log = wandb.Image(img)
                     wandb.log({"images": img_log, 'eval_epoch': step})

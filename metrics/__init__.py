@@ -115,11 +115,11 @@ def make_images_for_model(
 ):
     X, Y = sample
     assert X.ndim == 2
-    if model.data_version == 'data_v4plus':
-        assert X.shape[1] == 6
-    else:
-        # print('\n\n X.shape =', X.shape, '\n')
-        assert X.shape[1] == 4
+    # if model.data_version == 'data_v4plus':
+    #     assert X.shape[1] == 6
+    # else:
+    #     print('\n\n X.shape =', X.shape, '\n')
+    #     assert X.shape[1] == 4
     make_pdfs = pdf_outputs is not None
     if make_pdfs:
         assert isinstance(pdf_outputs, list)
