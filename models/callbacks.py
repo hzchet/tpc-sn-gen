@@ -1,8 +1,7 @@
 import torch
-import torchvision.utils as vutils
 import wandb
 
-from metrics import evaluate_model
+from metrics import make_images_for_model
 
 
 class SaveModelCallback:
@@ -33,12 +32,18 @@ class EvaluateModelCallback:
             self.model.eval()
             prediction_path = self.path / f"prediction_{step:05d}"
             with torch.no_grad():
-                chi2 = evaluate_model(
-                    self.model,
-                    path=prediction_path,
-                    sample=self.sample,
-                    gen_sample_name=('generated.dat'),
-                )
-            wandb.log({
-                f'eval_epoch': step,
-                f'chi2': chi2, })
+                images, images1, img_amplitude, chi2, chi2_feature = make_images_for_model(self.model, sample=self.sample, calc_chi2=True)
+                wandb.log({'chi2': chi2,
+                           'chi2_Sigma1^2': chi2_feature,
+                           'eval_epoch': step,
+                           })
+                print(chi2)
+                print(chi2_feature)
+                for k, img in images.items():
+                    img_log = wandb.Image(img)
+                    wandb.log({"images": img_log, 'eval_epoch': step})
+                for k, img in images1.items():
+                    img_log = wandb.Image(img)
+                    wandb.log({"Masked images": img_log, 'eval_epoch': step})
+                img_log = wandb.Image(img_amplitude)
+                wandb.log({"images with amplitude": img_log, 'eval_epoch': step})

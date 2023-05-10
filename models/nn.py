@@ -303,4 +303,3 @@ class FullModel(torch.nn.Module):
         for block in self.blocks:
             outputs = block(outputs)
         return outputs
-

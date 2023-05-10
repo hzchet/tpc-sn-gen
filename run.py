@@ -4,10 +4,9 @@ import argparse
 
 import torch
 import yaml
-from decouple import config as env_vars
 import wandb
 
-from data import loader
+from data import loader, preprocessing
 from models.utils import load_weights
 from models.training import train
 from models.callbacks import SaveModelCallback, EvaluateModelCallback
@@ -18,7 +17,7 @@ def make_parser():
     parser = argparse.ArgumentParser(fromfile_prefix_chars='@')
     parser.add_argument('--config', type=str, required=False)
     parser.add_argument('--checkpoint_name', type=str, required=True)
-    parser.add_argument('--use_gpu', action='store_true', default=False)
+    parser.add_argument('--use_gpu', action='store_true', default=True)
     parser.add_argument('--logging_dir', type=str, default='logs')
 
     return parser
@@ -42,7 +41,7 @@ def parse_args():
 
 def load_config(file):
     with open(file, 'r') as f:
-        config = yaml.load(f, Loader=yaml.FullLoader)
+        config = yaml.load(f)
 
     assert (config['feature_noise_power'] is None) == (
         config['feature_noise_decay'] is None
@@ -71,29 +70,27 @@ def main():
 
     config_path = str(model_path / 'config.yaml')
     continue_training = False
-    if args.prediction_only:
-        assert model_path.exists(), "Couldn't find model directory"
-        assert not args.config, "Config should be read from model path when doing prediction"
-    else:
-        if not args.config:
-            assert model_path.exists(), "Couldn't find model directory"
-            continue_training = True
-        else:
-            assert not model_path.exists(), "Model directory already exists"
 
-            model_path.mkdir(parents=True)
-            shutil.copy(args.config, config_path)
+    if not args.config:
+        assert model_path.exists(), "Couldn't find model directory"
+        continue_training = True
+    else:
+        assert not model_path.exists(), "Model directory already exists"
+
+        model_path.mkdir(parents=True)
+        shutil.copy(args.config, config_path)
 
     args.config = config_path
     config = load_config(args.config)
 
     model = Model_v4(config, device).to(device)
-
+    preprocessing._VERSION = model.data_version
+    
     next_epoch = 0
-    if args.prediction_only or continue_training:
+    if continue_training:
         next_epoch = load_weights(model, model_path) + 1
 
-    train_loader, test_loader = loader.get_loaders(
+    train_loader, X_test, Y_test = loader.get_loaders(
         scaler=model.scaler,
         batch_size=config['batch_size'],
         data_version=config['data_version'],
@@ -106,15 +103,16 @@ def main():
     gen_lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(model.gen_opt, gamma=config['lr_schedule_rate'])
 
     save_model = SaveModelCallback(model=model, path=model_path, save_period=config['save_every'])
-    evaluate_model = EvaluateModelCallback(model=model, path=model_path, save_period=config['save_every'], sample=(X_test_raw, Y_test))
+    evaluate_model = EvaluateModelCallback(model=model, path=model_path, save_period=config['save_every'], sample=(X_test, Y_test))
     
-    wandb.login(key=env_vars('WANDB_API_KEY'))
-    wandb.init(entity=env_vars('WANDB_ENTITY'), project=env_vars('WANDB_PROJECT'), name=args.checkpoint_name)
+    wandb.login(key='8e9008b623a334edf472f175d059c25c9aa66207')
+    wandb.init(entity='hzchet', project='coursework', name=args.checkpoint_name)
     
     train(
         model,
         train_loader,
-        test_loader,
+        Y_test,
+        X_test,
         config['num_epochs'],        
         gen_lr_scheduler,
         disc_lr_scheduler,

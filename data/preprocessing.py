@@ -11,15 +11,33 @@ _V4PLUS_VAR_TYPES = [float, float, float, float, int, float]
 
 
 def preprocess_features(features):
-    """features:
-        crossing_angle [-20, 20]
-        dip_angle [-60, 60]
-        drift_length [35, 290]
-        pad_coordinate [40-something, 40-something]
-    """
+    # features:
+    #   crossing_angle [-20, 20]
+    #   dip_angle [-60, 60]
+    #   drift_length [35, 290]
+    #   pad_coordinate [40-something, 40-something]
+    # print('\n\n initial features.shape =', features.shape, '\n')
     bin_fractions = features[:, 2:4] % 1
+    # print('bin_fractions.shape =', bin_fractions.shape, '\n')
     features = (features[:, :3] - np.array([[0.0, 0.0, 162.5]])) / np.array([[20.0, 60.0, 127.5]])
+    # print('new_features.shape =', features.shape, '\n')
+    # print('concat.shape =', np.concatenate([features, bin_fractions], axis=-1).shape, '\n')
     return np.concatenate([features, bin_fractions], axis=-1)
+
+
+def preprocess_features_v4plus(features):
+    # features:
+    #   crossing_angle [-20, 20]
+    #   dip_angle [-60, 60]
+    #   drift_length [35, 290]
+    #   pad_coordinate [40-something, 40-something]
+    #   padrow {23, 33}
+    #   pT [0, 2.5]
+    bin_fractions = features[:, 2:4] % 1
+    features_1 = (features[:, :3] - np.array([[0.0, 0.0, 162.5]])) / np.array([[20.0, 60.0, 127.5]])
+    features_2 = (features[:, 4:5] >= 27).astype(np.float32)
+    features_3 = features[:, 5:6] / 2.5
+    return np.concatenate([features_1, features_2, features_3, bin_fractions], axis=-1)
 
 
 class Reader:

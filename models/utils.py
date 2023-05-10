@@ -1,7 +1,15 @@
 import re
-import torchvision.transforms as T
 from torch.utils.data import Dataset
+import torch
 
+
+class MyDataParallel(torch.nn.DataParallel):
+    def __getattr__(self, name):
+        try:
+            return super().__getattr__(name)
+        except AttributeError:
+            return getattr(self.module, name)
+    
 
 def epoch_from_name(name):
     (epoch,) = re.findall(r'\d+', name)

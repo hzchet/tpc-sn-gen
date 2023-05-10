@@ -7,7 +7,8 @@ import wandb
 def train(
     model,
     train_loader,
-    test_loader,
+    data_val,
+    features_val,
     num_epochs,
     gen_lr_scheduler=None,
     disc_lr_scheduler=None,
@@ -49,12 +50,18 @@ def train(
         
         model.eval()
         losses_val = {}
-        for data, features in trange(test_loader):
+        for i_sample in trange(0, len(data_val), batch_size):
+            batch = data_val[i_sample : i_sample + batch_size]
             with torch.no_grad():
-                losses_val_batch = {k: l.cpu().detach().numpy() for k, l in model.calculate_losses(data, features).items()}
-                for k, l in losses_val_batch.items():
-                    losses_val[k] = losses_val.get(k, 0) + l * len(data)
-
+                if features_train is None:
+                    losses_val_batch = {k: l.cpu().detach().numpy() for k, l in model.calculate_losses(batch).items()}
+                else:
+                    feature_batch = features_val[i_sample : i_sample + batch_size]
+                    losses_val_batch = {k: l.cpu().detach().numpy() for k, l in model.calculate_losses(feature_batch, batch).items()}
+            for k, l in losses_val_batch.items():
+                losses_val[k] = losses_val.get(k, 0) + l * len(batch)
+        
+        
         losses_val = {k: l / len(train_loader.dataset) for k, l in losses_val.items()}
         val_gen_losses.append(losses_val['gen_loss'])
         val_disc_losses.append(losses_val['disc_loss'])
