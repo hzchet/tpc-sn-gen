@@ -25,4 +25,5 @@ def get_loaders(scaler, batch_size=32, data_version=None, pad_range=(40, 50), ti
     train_dataset = MyDataset(Y_train, preprocess_features(X_train_raw.astype('float32')))
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, num_workers=4, pin_memory=True)
+
     return train_loader, X_test_raw, Y_test
