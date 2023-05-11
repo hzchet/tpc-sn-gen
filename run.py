@@ -41,7 +41,7 @@ def parse_args():
 
 def load_config(file):
     with open(file, 'r') as f:
-        config = yaml.load(f)
+        config = yaml.load(f, Loader=yaml.FullLoader)
 
     assert (config['feature_noise_power'] is None) == (
         config['feature_noise_decay'] is None
