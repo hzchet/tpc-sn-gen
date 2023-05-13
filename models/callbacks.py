@@ -11,7 +11,7 @@ class SaveModelCallback:
         self.save_period = save_period
 
     def __call__(self, step):
-        if step % self.save_period == 0 and step != 0:
+        if step % self.save_period == 0:
             print(f'Saving model on step {step} to {self.path}')
             gen_artifact = wandb.Artifact('generator', type='model')
             disc_artifact = wandb.Artifact('discriminator', type='model')
@@ -43,7 +43,7 @@ class EvaluateModelCallback:
         self.batch_size = batch_size
 
     def __call__(self, step):
-        if step % self.validate_period == 0 and step != 0:
+        if step % self.validate_period == 0:
             print(f'Evaluating model on step {step}...')
             self.model.eval()
             with torch.no_grad():
