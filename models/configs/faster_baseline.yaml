@@ -60,7 +60,7 @@ architecture:
           arguments:
             units: [128, 1]
             activations: ['elu', 'null']
-            input_shape: [134,]
+            input_shape: [133,]
             output_shape: NULL
             name: 'discriminator_head'
             use_spectral_norm: False
