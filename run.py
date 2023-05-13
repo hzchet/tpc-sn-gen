@@ -90,10 +90,10 @@ def main():
     if continue_training:
         next_epoch = load_weights(model, model_path) + 1
 
-    train_loader, X_test, Y_test = loader.get_loaders(
+    train_loader, test_loader, X_test, Y_test = loader.get_loaders(
         scaler=model.scaler,
         batch_size=config['batch_size'],
-        data_version=config['data_version'],
+        num_workers=config['num_workers'],
         pad_range=model.pad_range,
         time_range=model.time_range,
         strict=False
@@ -111,10 +111,8 @@ def main():
     train(
         model,
         train_loader,
-        Y_test,
-        X_test,
+        test_loader,
         config['num_epochs'],
-        config['batch_size'],
         gen_lr_scheduler,
         disc_lr_scheduler,
         first_epoch=next_epoch,
