@@ -28,10 +28,12 @@ class SaveModelCallback:
             gen_opt_artifact.add_file(str(self.path.joinpath("gen_opt_{:05d}.pt".format(step))))
             disc_opt_artifact.add_file(str(self.path.joinpath("disc_opt_{:05d}.pt".format(step))))
             
-            wandb.log(gen_artifact)
-            wandb.log(disc_artifact)
-            wandb.log(gen_opt_artifact)
-            wandb.log(disc_opt_artifact)
+            wandb.log({
+                'generator': gen_artifact,
+                'discriminator': disc_artifact,
+                'generator_optimizer': gen_opt_artifact,
+                'discriminator_optimizer': disc_opt_artifact
+            })
 
 
 class EvaluateModelCallback:
@@ -54,7 +56,7 @@ class EvaluateModelCallback:
                 })
                 print(chi2)
                 for k, img in images.items():
-                    img_log = wandb.Image(img)
+                    img_log = wandb.Image(img, caption=k)
                     wandb.log({"is_masked": False, k: img_log, 'eval_epoch': step})
                 for k, img in images1.items():
                     img_log = wandb.Image(img)
