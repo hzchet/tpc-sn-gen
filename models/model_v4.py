@@ -148,8 +148,8 @@ class Model_v4(torch.nn.Module):
         return losses
     
     def calculate_losses(self, feature_batch, target_batch):
-        feature_batch = torch.tensor(feature_batch, device=self.device, dtype=torch.float32)
-        target_batch = torch.tensor(target_batch, device=self.device, dtype=torch.float32)
+        feature_batch = feature_batch.to(self.device).type(torch.float32)
+        target_batch = feature_batch.to(self.device).type(torch.float32)
         fake = self.make_fake(feature_batch)
     
         d_real = self.discriminator([feature_batch, target_batch])
