@@ -103,10 +103,10 @@ def main():
     gen_lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(model.gen_opt, gamma=config['lr_schedule_rate'])
 
     save_model = SaveModelCallback(model=model, path=model_path, save_period=config['save_every'])
-    evaluate_model = EvaluateModelCallback(model=model, path=model_path, save_period=config['save_every'], sample=(X_test, Y_test))
+    evaluate_model = EvaluateModelCallback(model=model, path=model_path, batch_size=config['batch_size'], validate_period=config['validate_every'], sample=(X_test, Y_test))
     
     wandb.login(key='8e9008b623a334edf472f175d059c25c9aa66207')
-    wandb.init(entity='hzchet', project='coursework', name=args.checkpoint_name)
+    wandb.init(entity='hzchet', project='coursework', name=args.checkpoint_name, config=config)
     
     train(
         model,

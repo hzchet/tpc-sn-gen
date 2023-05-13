@@ -9,7 +9,8 @@ gpdata_lambda: 0.
 cramer: False
 stochastic_stepping: False
 
-save_every: 1000
+save_every: 200
+validate_every: 1000
 num_epochs: 10001
 
 feature_noise_power: NULL
@@ -26,9 +27,9 @@ architecture:
     generator:
         - block_type: 'fully_connected'
           arguments:
-            units: [32, 64, 64, 64, 128]
+            units: [32, 64, 64, 128]
             activations: [
-                'elu', 'elu', 'elu', 'elu', 'custom'
+                'elu', 'elu', 'elu', 'custom'
             ]
             input_shape: [37,]
             output_shape: [8, 16]
@@ -45,22 +46,21 @@ architecture:
             block:
               block_type: 'conv'
               arguments:
-                out_channels: [16, 16, 32, 32, 64, 64]
-                kernel_sizes: [3, 3, 3, 3, 3, 2]
-                paddings: ['same', 'same', 'same', 'same', 'valid', 'valid']
-                activations: ['elu', 'elu', 'elu', 'elu', 'elu', 'elu']
-                poolings: [NULL, [1, 2], NULL, 2, NULL, NULL]
+                out_channels: [16, 32, 64, 64, 128]
+                kernel_sizes: [3, 3, 3, 3, 2]
+                paddings: ['same', 'same', 'same', 'valid', 'valid']
+                activations: ['elu', 'elu', 'elu', 'elu', 'elu']
+                poolings: [[1, 2], NULL, 2, NULL, NULL]
                 in_channels: 6
-                output_shape: [64,]
-                dropouts: [0.02, 0.02, 0.02, 0.02, 0.02, 0.02]
+                output_shape: [128,]
+                dropouts: [0.02, 0.02, 0.02, 0.02, 0.02]
                 name: discriminator_conv_block
                 use_spectral_norm: False
         - block_type: 'fully_connected'
           arguments:
             units: [128, 1]
             activations: ['elu', 'null']
-            input_shape: [69,]
+            input_shape: [134,]
             output_shape: NULL
             name: 'discriminator_head'
             use_spectral_norm: False
-
