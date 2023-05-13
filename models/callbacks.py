@@ -16,7 +16,7 @@ class SaveModelCallback:
             gen_artifact = wandb.Artifact('generator', type='model')
             disc_artifact = wandb.Artifact('discriminator', type='model')
             gen_opt_artifact = wandb.Artifact('generator_optimizer', type='optimizer')
-            disc_opt_artifact = wandb.Artifact('discriminator optimizer', type='optimizer')
+            disc_opt_artifact = wandb.Artifact('discriminator_optimizer', type='optimizer')
 
             torch.save(self.model.generator.state_dict(), str(self.path.joinpath("generator_checkpoint_{:05d}.pt".format(step))))
             torch.save(self.model.discriminator.state_dict(), str(self.path.joinpath("discriminator_checkpoint_{:05d}.pt".format(step))))
