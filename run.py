@@ -105,7 +105,7 @@ def main():
     save_model = SaveModelCallback(model=model, path=model_path, save_period=config['save_every'])
     evaluate_model = EvaluateModelCallback(model=model, path=model_path, batch_size=config['batch_size'], validate_period=config['validate_every'], sample=(X_test, Y_test))
     
-    wandb.login(key='8e9008b623a334edf472f175d059c25c9aa66207')
+    wandb.login(key='KEY')
     wandb.init(entity='hzchet', project='coursework', name=args.checkpoint_name, config=config)
     
     train(
